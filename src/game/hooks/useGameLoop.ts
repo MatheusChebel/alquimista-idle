@@ -2,16 +2,16 @@ import { useEffect } from 'react';
 
 import { useGameStore } from '@/game/store/gameStore';
 
-const TICK_INTERVAL_MS = 100;
+const TICK_INTERVAL_MS = 500;
 
-export function useGameLoop() {
-  const tick = useGameStore((state) => state.tick);
-
+export function useGameLoop(enabled = true) {
   useEffect(() => {
+    if (!enabled) return;
+
     const intervalId = setInterval(() => {
-      tick(TICK_INTERVAL_MS / 1000);
+      useGameStore.getState().tick(TICK_INTERVAL_MS);
     }, TICK_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
-  }, [tick]);
+  }, [enabled]);
 }

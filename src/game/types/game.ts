@@ -1,49 +1,49 @@
-export type UpgradeId = 'touch' | 'furnace' | 'retort' | 'cinnabar' | 'stone';
+export type ActiveEffectKind = 'frenzy' | 'clickFrenzy' | 'eclipse';
 
-export type UpgradeType = 'click' | 'passive' | 'multiplier';
-
-export interface UpgradeDefinition {
-  id: UpgradeId;
-  name: string;
-  description: string;
-  emoji: string;
-  baseCost: number;
-  costMultiplier: number;
-  type: UpgradeType;
-  valuePerLevel: number;
-}
-
-export interface GameStats {
-  clickPower: number;
-  goldPerSecond: number;
-  incomeMultiplier: number;
-  prestigeMultiplier: number;
-  totalMultiplier: number;
-}
-
-export interface UpgradeLevels {
-  touch: number;
-  furnace: number;
-  retort: number;
-  cinnabar: number;
-  stone: number;
+export interface ActiveEffect {
+  id: string;
+  kind: ActiveEffectKind;
+  endsAt: number;
 }
 
 export interface GameState {
-  gold: number;
-  totalGoldEarned: number;
-  upgradeLevels: UpgradeLevels;
+  essence: number;
+  owned: Record<string, number>;
+  boughtUpgrades: Record<string, true>;
+  boughtClickUpgrades: Record<string, true>;
+  boughtPermNodes: Record<string, true>;
+  unlockedAchievements: Record<string, true>;
+  activeEffects: ActiveEffect[];
+  totalClicks: number;
+  totalEssenceEarned: number;
+  conjunctionsClicked: number;
+  frenzyActivations: number;
+  ghostClicksPerSec: number;
+  quintessence: number;
+  quintessenceEarned: number;
   prestigePoints: number;
-  lastTickAt: number;
+  lastTick: number;
+  lastEventBanner: string | null;
+  luckyPopup: string | null;
+  achievementToast: string | null;
+  magnumOpusOpen: boolean;
 }
 
 export interface GameActions {
+  tick: (deltaMs: number) => void;
   click: () => void;
-  buyUpgrade: (id: UpgradeId) => boolean;
+  buyGenerator: (id: string) => void;
+  buyUpgrade: (id: string) => void;
+  buyClickUpgrade: (id: string) => void;
+  buyQuintessenceNode: (id: string) => void;
   prestige: () => boolean;
-  tick: (deltaSeconds: number) => void;
-  applyOfflineProgress: () => void;
-  resetSave: () => void;
+  triggerAstralEvent: () => string;
+  clearEventBanner: () => void;
+  clearLuckyPopup: () => void;
+  clearAchievementToast: () => void;
+  openMagnumOpus: () => void;
+  closeMagnumOpus: () => void;
+  hydrate: (saved: Partial<GameState>) => void;
 }
 
 export type GameStore = GameState & GameActions;

@@ -3,23 +3,22 @@ import type { ReactNode } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useGameHydration } from '@/game/hooks/useGameHydration';
-import { useGameLoop } from '@/game/hooks/useGameLoop';
+import { BASE } from '@/constants/theme';
+import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
 
-type GameProviderProps = {
+type GameLoadingProps = {
   children: ReactNode;
+  isReady: boolean;
 };
 
-export function GameProvider({ children }: GameProviderProps) {
-  const isReady = useGameHydration();
-
-  useGameLoop();
+export function GameLoading({ children, isReady }: GameLoadingProps) {
+  const theme = usePhaseTheme();
 
   if (!isReady) {
     return (
-      <ThemedView style={styles.loading}>
-        <ActivityIndicator size="large" color="#D4AF37" />
-        <ThemedText type="small" themeColor="textSecondary">
+      <ThemedView style={[styles.loading, { backgroundColor: BASE.bgDeep }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+        <ThemedText type="small" style={{ color: BASE.textMuted }}>
           Carregando laboratório...
         </ThemedText>
       </ThemedView>

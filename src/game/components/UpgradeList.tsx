@@ -1,38 +1,111 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { UPGRADES } from '@/game/constants/upgrades';
-import { UpgradeCard } from '@/game/components/UpgradeCard';
+import { BASE, Spacing } from '@/constants/theme';
+import { CLICK_UPGRADES, UPGRADES } from '@/game/data/upgrades';
+import { UpgradeRow } from '@/game/components/UpgradeRow';
+import { TwoColumnGrid } from '@/game/components/ui/TwoColumnGrid';
+import { getUpgradeCost } from '@/game/lib/economy';
 import { useGameStore } from '@/game/store/gameStore';
-import type { UpgradeId } from '@/game/types/game';
-import { getUpgradeCost } from '@/game/utils/calculations';
 
-export function UpgradeList() {
-  const gold = useGameStore((state) => state.gold);
-  const upgradeLevels = useGameStore((state) => state.upgradeLevels);
+export function TransmutationList() {
+  const owned = useGameStore((state) => state.owned);
+  const boughtUpgrades = useGameStore((state) => state.boughtUpgrades);
   const buyUpgrade = useGameStore((state) => state.buyUpgrade);
+
+  const visible = UPGRADES.filter((upgrade) => !boughtUpgrades[upgrade.id]);
+  const useGrid = visible.length >= 4;
 
   return (
     <View style={styles.container}>
-      <ThemedText type="smallBold" style={styles.title}>
-        Upgrades
-      </ThemedText>
-      {UPGRADES.map((upgrade) => {
-        const level = upgradeLevels[upgrade.id as UpgradeId];
-        const cost = getUpgradeCost(upgrade, level);
+      {visible.length === 0 ? (
+        <ThemedText type="small" style={{ color: BASE.textMuted, fontStyle: 'italic' }}>
+          Todas as transmutações visíveis foram compradas.
+        </ThemedText>
+      ) : (
+        <TwoColumnGrid minItems={4}>
+          {visible.map((upgrade) => {
+            const unlocked = (owned[upgrade.generatorId] ?? 0) >= upgrade.unlockAt;
+            const cost = getUpgradeCost(upgrade.generatorId, upgrade.costMult);
 
-        return (
-          <UpgradeCard
-            key={upgrade.id}
-            upgrade={upgrade}
-            level={level}
-            cost={cost}
-            canAfford={gold >= cost}
-            onBuy={() => buyUpgrade(upgrade.id)}
-          />
-        );
-      })}
+            if (!unlocked) {
+              return (
+                <UpgradeRow
+                  key={upgrade.id}
+                  displayName={upgrade.displayName}
+                  description={`Requer ${upgrade.unlockAt} unidades`}
+                  cost={cost}
+                  locked
+                  compact={useGrid}
+                  iconId={upgrade.generatorId}
+                  category="generator"
+                  onBuy={() => {}}
+                />
+              );
+            }
+
+            return (
+              <UpgradeRow
+                key={upgrade.id}
+                displayName={upgrade.displayName}
+                description="Dobra a produção deste Aparelho"
+                cost={cost}
+                compact={useGrid}
+                iconId={upgrade.generatorId}
+                category="generator"
+                onBuy={() => buyUpgrade(upgrade.id)}
+              />
+            );
+          })}
+        </TwoColumnGrid>
+      )}
+    </View>
+  );
+}
+
+export function ClickUpgradeList() {
+  const boughtClickUpgrades = useGameStore((state) => state.boughtClickUpgrades);
+  const buyClickUpgrade = useGameStore((state) => state.buyClickUpgrade);
+
+  const available = CLICK_UPGRADES.filter((upgrade) => !boughtClickUpgrades[upgrade.id]);
+  const useGrid = available.length >= 4;
+
+  return (
+    <View style={styles.container}>
+      {available.length === 0 ? (
+        <ThemedText type="small" style={{ color: BASE.textMuted, fontStyle: 'italic' }}>
+          Todos os upgrades de clique foram comprados.
+        </ThemedText>
+      ) : (
+        <TwoColumnGrid minItems={4}>
+          {available.map((upgrade) => (
+            <UpgradeRow
+              key={upgrade.id}
+              displayName={upgrade.displayName}
+              description={
+                upgrade.kind === 'flatMult'
+                  ? `Multiplica o clique por ${upgrade.value}`
+                  : `Clique vale +${upgrade.value * 100}% do EPS atual`
+              }
+              cost={upgrade.cost}
+              compact={useGrid}
+              iconId={upgrade.id}
+              category="click"
+              onBuy={() => buyClickUpgrade(upgrade.id)}
+            />
+          ))}
+        </TwoColumnGrid>
+      )}
+    </View>
+  );
+}
+
+/** @deprecated use TransmutationList or ClickUpgradeList */
+export function UpgradeList() {
+  return (
+    <View style={styles.container}>
+      <TransmutationList />
+      <ClickUpgradeList />
     </View>
   );
 }
@@ -40,11 +113,5 @@ export function UpgradeList() {
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.five,
-  },
-  title: {
-    color: '#D4AF37',
-    marginBottom: Spacing.one,
   },
 });

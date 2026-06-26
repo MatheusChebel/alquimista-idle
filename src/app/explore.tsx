@@ -1,78 +1,125 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
-import { UPGRADES } from '@/game/constants/upgrades';
-import { PRESTIGE_GOLD_THRESHOLD, getPrestigeMultiplier } from '@/game/constants/prestige';
-import { selectGameStats, useGameStore } from '@/game/store/gameStore';
-import { formatGold } from '@/game/utils/formatGold';
+import { BASE, BottomTabInset, Spacing } from '@/constants/theme';
+import { ACHIEVEMENTS } from '@/game/data/achievements';
+import { AchievementList } from '@/game/components/achievements/AchievementList';
+import { GeneratorList } from '@/game/components/GeneratorList';
+import { GrandeObraWheel } from '@/game/components/prestige/GrandeObraWheel';
+import { ClickUpgradeList, TransmutationList } from '@/game/components/UpgradeList';
+import { ParchmentOverlay } from '@/game/components/effects/ParchmentOverlay';
+import { GrimorioOrnament } from '@/game/components/icons/GrimorioOrnament';
+import { SegmentedControl } from '@/game/components/ui/SegmentedControl';
+import { useClickValue, useGameEps, useSealMult } from '@/game/hooks/useGameStats';
+import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
+import { formatNumber } from '@/game/lib/formulas';
+import { gameText } from '@/game/lib/typography';
+import { useGameStore } from '@/game/store/gameStore';
+
+type GrimorioTab = 'aparelhos' | 'toque' | 'magnum' | 'selos';
+
+const TABS: { value: GrimorioTab; label: string }[] = [
+  { value: 'aparelhos', label: 'Aparelhos' },
+  { value: 'toque', label: 'Toque' },
+  { value: 'magnum', label: 'Magnum' },
+  { value: 'selos', label: 'Selos' },
+];
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.statRow}>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" style={{ color: BASE.textMuted }}>
         {label}
       </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
+      <Text style={[gameText.cost, { color: BASE.textPrimary, fontSize: 14 }]}>{value}</Text>
     </View>
   );
 }
 
-export default function StatsScreen() {
-  const totalGoldEarned = useGameStore((state) => state.totalGoldEarned);
-  const prestigePoints = useGameStore((state) => state.prestigePoints);
-  const upgradeLevels = useGameStore((state) => state.upgradeLevels);
-  const stats = useGameStore(selectGameStats);
+export default function GrimorioScreen() {
+  const theme = usePhaseTheme();
+  const [tab, setTab] = useState<GrimorioTab>('aparelhos');
+
+  const essence = useGameStore((state) => state.essence);
+  const eps = useGameEps();
+  const clickValue = useClickValue();
+  const sealMult = useSealMult();
+  const unlockedCount = useGameStore((s) => Object.keys(s.unlockedAchievements).length);
+  const quintessence = useGameStore((s) => s.quintessence);
+  const quintessenceEarned = useGameStore((s) => s.quintessenceEarned);
+  const prestigePoints = useGameStore((s) => s.prestigePoints);
+  const openMagnumOpus = useGameStore((s) => s.openMagnumOpus);
+
+  const eyebrow = useMemo(() => {
+    if (tab === 'aparelhos') return 'ESSÊNCIA POR SEGUNDO';
+    if (tab === 'toque') return 'POR TOQUE';
+    if (tab === 'selos') return 'CONQUISTAS DO ALQUIMISTA';
+    return 'A GRANDE OBRA';
+  }, [tab]);
+
+  const eyebrowColor =
+    tab === 'toque' ? BASE.gold : tab === 'selos' ? theme.glow : theme.accent;
 
   return (
     <ThemedView style={styles.container}>
+      <ParchmentOverlay />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: BottomTabInset + Spacing.five }]}
           showsVerticalScrollIndicator={false}>
-          <ThemedText type="subtitle" style={styles.title}>
-            Grimório
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-            Estatísticas da sua jornada alquímica
-          </ThemedText>
+          <Text style={[gameText.tabTitle, styles.title, { color: theme.accent }]}>GRIMÓRIO</Text>
+          <GrimorioOrnament width={260} />
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
-              Progresso
-            </ThemedText>
-            <StatRow label="Ouro total gerado" value={`🪙 ${formatGold(totalGoldEarned)}`} />
-            <StatRow label="Renda passiva" value={`${formatGold(stats.goldPerSecond)}/s`} />
-            <StatRow label="Poder de clique" value={formatGold(stats.clickPower)} />
-            <StatRow label="Multiplicador total" value={`x${stats.totalMultiplier.toFixed(2)}`} />
-          </View>
+          <SegmentedControl
+            options={TABS}
+            value={tab}
+            onChange={(value) => setTab(value as GrimorioTab)}
+          />
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
-              Prestígio
-            </ThemedText>
-            <StatRow label="Pontos de prestígio" value={`✨ ${prestigePoints}`} />
-            <StatRow
-              label="Bônus permanente"
-              value={`+${Math.round((getPrestigeMultiplier(prestigePoints) - 1) * 100)}%`}
-            />
-            <StatRow label="Meta de prestígio" value={formatGold(PRESTIGE_GOLD_THRESHOLD)} />
-          </View>
+          <Text style={[gameText.labelSmall, styles.eyebrow, { color: eyebrowColor }]}>{eyebrow}</Text>
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
-              Upgrades
-            </ThemedText>
-            {UPGRADES.map((upgrade) => (
-              <StatRow
-                key={upgrade.id}
-                label={`${upgrade.emoji} ${upgrade.name}`}
-                value={`Nv. ${upgradeLevels[upgrade.id]}`}
-              />
-            ))}
-          </View>
+          {tab === 'aparelhos' && (
+            <View style={[styles.section, { backgroundColor: BASE.bgSurface, borderColor: BASE.borderHair }]}>
+              <GeneratorList />
+              <TransmutationList />
+            </View>
+          )}
+
+          {tab === 'toque' && (
+            <View style={[styles.section, { backgroundColor: BASE.bgSurface, borderColor: BASE.borderHair }]}>
+              <ClickUpgradeList />
+            </View>
+          )}
+
+          {tab === 'magnum' && (
+            <View style={[styles.section, { backgroundColor: BASE.bgSurface, borderColor: BASE.borderHair }]}>
+              <GrandeObraWheel size={180} showCenter />
+              <View style={styles.statsBlock}>
+                <StatRow label="Essência atual" value={`✦ ${formatNumber(essence)}`} />
+                <StatRow label="Renda passiva" value={`${formatNumber(eps)}/s`} />
+                <StatRow label="Poder de clique" value={formatNumber(clickValue)} />
+                <StatRow label="Selo do Alquimista" value={`×${sealMult.toFixed(2)}`} />
+                <StatRow label="Conquistas" value={`${unlockedCount}/${ACHIEVEMENTS.length}`} />
+                <StatRow label="Quintessência" value={`✦ ${formatNumber(quintessence)}`} />
+                <StatRow label="Quintessência total" value={`✦ ${formatNumber(quintessenceEarned)}`} />
+                <StatRow label="Pontos de prestígio" value={`${prestigePoints}`} />
+              </View>
+              <Pressable
+                onPress={openMagnumOpus}
+                style={[styles.magnumLink, { borderColor: theme.accent, backgroundColor: BASE.bgElevated }]}>
+                <Text style={[gameText.generatorName, { color: theme.accent }]}>Abrir Magnum Opus</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {tab === 'selos' && (
+            <View style={[styles.section, { backgroundColor: BASE.bgSurface, borderColor: BASE.borderHair }]}>
+              <AchievementList />
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -82,7 +129,7 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#120A1C',
+    backgroundColor: BASE.bgDeep,
   },
   safeArea: {
     flex: 1,
@@ -91,29 +138,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
     gap: Spacing.three,
+    alignItems: 'center',
   },
   title: {
-    color: '#D4AF37',
+    textAlign: 'center',
   },
-  subtitle: {
-    marginTop: -Spacing.two,
+  eyebrow: {
+    alignSelf: 'flex-start',
+    letterSpacing: 1.4,
+    width: '100%',
   },
   section: {
-    backgroundColor: '#241734',
-    borderRadius: 16,
+    width: '100%',
+    borderRadius: 14,
     padding: Spacing.three,
     gap: Spacing.two,
     borderWidth: 1,
-    borderColor: '#3A2E4A',
+    shadowColor: BASE.shadowGlow,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
-  sectionTitle: {
-    color: '#D4AF37',
-    marginBottom: Spacing.one,
+  statsBlock: {
+    gap: Spacing.two,
+    width: '100%',
   },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  magnumLink: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: Spacing.three,
+    alignItems: 'center',
   },
 });
