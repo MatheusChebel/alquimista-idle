@@ -17,17 +17,24 @@
 
 **Alquimista Idle** é um jogo incremental de toque com tema alquímico, inspirado na simplicidade e no ritmo de clássicos como *Cookie Clicker*, *Clicker Heroes* e *Tap Titans* — mas com identidade própria.
 
-Você é um alquimista destilando **Essência** (a gota luminosa que escorre da poção). Toque para destilar, invista em **Aparelhos** que geram Essência por segundo, compre **Transmutações** no Grimório e, quando o crescimento desacelerar, realize a **Magnum Opus** (prestígio) para recomeçar mais forte — avançando pelas quatro fases clássicas da Grande Obra: **Nigredo → Albedo → Citrinitas → Rubedo**, cada uma com sua própria paleta.
+Você é um alquimista destilando **Essência** (a gota luminosa que escorre da poção). Toque para destilar, invista em **Instrumentos** que geram Essência por segundo, compre **Transmutações** no Grimório, lance **Rituais** ativos e, quando o crescimento desacelerar, realize a **Magnum Opus** (prestígio) para recomeçar mais forte — avançando pelas quatro fases clássicas da Grande Obra: **Nigredo → Albedo → Citrinitas → Rubedo**, cada uma com sua própria paleta.
 
 ## ✨ Funcionalidades
 
-- 🧪 **Destilar com o toque** — feedback tátil com animação e número flutuante.
-- ⚙️ **9 Aparelhos** geradores (Alambique, Caldeirão, Athanor, Homúnculo, Jardim de Ervas, Cadinho de Cristal, Familiar, Portal Etéreo, Árvore Filosofal), com curva de custo exponencial balanceada.
-- 📖 **Grimório** — Transmutações que multiplicam a produção e uma linha de upgrades de clique que escala com o EPS.
-- 🔮 **Magnum Opus** — prestígio com Quintessência e a **Roda da Grande Obra** mostrando o progresso pelas 4 fases.
-- ☄️ **Conjunções Astrais** — eventos com bônus (Frenesi, Toque Dourado, Sorte, Eclipse), com banner e timer.
-- 🏺 **O Laboratório** — cada compra ganha presença visual: estações que se povoam e evoluem de nível.
-- 💾 **Progresso salvo** localmente, com ganho offline.
+- 🧪 **Destilar com o toque** — feedback tátil, animação, número flutuante e som orgânico (tom variando a cada clique).
+- ⚙️ **14 Instrumentos** geradores (da curva Alambique → Olho do Cosmos), com desbloqueio progressivo e curva de custo exponencial balanceada.
+- 📖 **Grimório** — abas Instrumentos, Toque, Magnum e Selos:
+  - **Transmutações** (×2 passivo por Instrumento) e **12 upgrades de Toque** (escala com EPS e quantidade de Instrumentos).
+  - **Rituais alquímicos** — habilidades ativas com cooldown (Transmutar, Catalisar, Mão de Midas).
+  - **Conquistas** — Selo do Alquimista (+2% produção global cada) e recompensas únicas de Quintessência.
+  - **Provações** — desafios opcionais com regras específicas e bônus de Quintessência.
+- 🔮 **Magnum Opus** — prestígio com Quintessência, **Roda da Grande Obra** e múltiplas fontes de Quintessência (prestígio, conquistas, maestria, marcos de coleção, provações).
+- ☄️ **Conjunções Astrais** — eventos com bônus (Frenesi, Toque Dourado, Sorte, Eclipse), banner, timer e efeitos sonoros dedicados.
+- 🏺 **Laboratório vivo** — estações por Instrumento com `×N`, nível visual, pips de Transmutação (I–V), animação de revelação na 1ª compra e flash ao subir de tier.
+- 🎨 **Ícones distintos** — anel ciano (Instrumento), dourado (Transmutação), arcano (Toque/Ritual); glifos únicos por upgrade.
+- 🔊 **Kit de áudio v2** — 6 SFX em `.m4a` pré-carregados (pools round-robin): destilar, comprar, upgrade/ritual, conquista, conjunção e sorte.
+- 💾 **Progresso salvo** localmente, com ganho offline e toggle de som persistente.
+- 🛠️ **God Mode** (somente `__DEV__`) — painel de dev para testar prestígio e progresso sem grind.
 - 🎨 Estética de **penumbra quente** com a poção viva como elemento-assinatura, focada em rodar liso em qualquer Android.
 
 ## 🛠️ Tecnologias
@@ -45,7 +52,7 @@ Você é um alquimista destilando **Essência** (a gota luminosa que escorre da 
 
 ## 🚀 Começando
 
-Pré-requisitos: **Node.js LTS** e o app **Expo Go** (ou um dev client) no celular.
+Pré-requisitos: **Node.js LTS** e o app **Expo Go** (ou um **dev client** para áudio nativo) no celular.
 
 ```bash
 # 1. Clonar
@@ -57,9 +64,11 @@ npm install
 
 # 3. Rodar
 npx expo start
+# ou, com dev client (recomendado para SFX):
+npx expo start --dev-client
 ```
 
-Leia o QR Code com o app Expo Go (Android/iOS), ou pressione `a`/`i` no terminal para abrir num emulador.
+Leia o QR Code com o app Expo Go (Android/iOS), ou pressione `a`/`i` no terminal para abrir num emulador. Os efeitos sonoros exigem um **dev client** com `expo-audio` nativo — no Expo Go o jogo roda, mas o som pode ficar indisponível.
 
 ### Scripts úteis
 ```bash
@@ -72,16 +81,18 @@ npx expo-doctor@latest    # diagnosticar problemas de versão
 ## 📁 Estrutura
 
 ```
+assets/sfx/                # efeitos sonoros (.m4a)
 src/
 ├─ app/                    # rotas (expo-router): Poção, Laboratório, Grimório
 ├─ components/             # UI compartilhada (themed-*, etc.)
 ├─ constants/theme.ts      # tokens de cor, tipografia e espaçamento
 └─ game/
-   ├─ data/                # geradores, upgrades, eventos, tiers do lab
-   ├─ lib/                 # fórmulas (custo, EPS, formatação)
-   ├─ hooks/               # loop do jogo
+   ├─ audio/               # sounds.ts + gerenciador de SFX (pools)
+   ├─ data/                # geradores, upgrades, rituais, conquistas, eventos
+   ├─ lib/                 # fórmulas (custo, EPS, formatação, provações)
+   ├─ hooks/               # loop do jogo, animações do lab
    ├─ store/               # estado (Zustand)
-   └─ components/          # Poção, Roda, Sigil/ItemIcon, cards, lab, eventos
+   └─ components/          # Poção, Roda, Sigil/ItemIcon, lab, rituais, eventos
 
 docs/                      # documentação de design e implementação
 └─ mockups/                # referências visuais (comparação lado a lado)
@@ -90,23 +101,30 @@ docs/                      # documentação de design e implementação
 ## 🎮 Economia (visão geral)
 
 - **Moeda:** Essência (toque + produção passiva). **Prestígio:** Quintessência.
-- **Custo dos Aparelhos:** `custo_base × 1.15 ^ (quantidade)` — crescimento exponencial comprovado.
-- **Transmutações:** multiplicam a produção (×2) de um Aparelho.
+- **Custo dos Instrumentos:** `custo_base × 1.15 ^ (quantidade)` — crescimento exponencial comprovado.
+- **Transmutações:** multiplicam a produção (×2) de um Instrumento.
+- **Toque:** `base × mults + bônus por Instrumento + % do EPS atual`.
+- **Selo do Alquimista:** `1.02 ^ (conquistas desbloqueadas)` de produção global.
 - **Prestígio:** `floor((essência_total / 1e12) ^ (1/3))`, cada ponto = +1% de produção global.
+- **Quintessência extra:** conquistas, maestria (nível 5), marcos de coleção e provações — fontes únicas que não resetam no prestígio.
 
 ## 🗺️ Roadmap
 
-- [x] Loop central, Aparelhos, Grimório, persistência
+- [x] Loop central, Instrumentos, Grimório, persistência
 - [x] Estética: poção viva, Roda da Grande Obra, sistema de ícones
-- [x] O Laboratório (compras com presença visual)
+- [x] O Laboratório (estações vivas, níveis, transmutações visíveis)
 - [x] Conjunções Astrais com banner e timer
-- [ ] Design de áudio (sons fluidos de toque, compra, conquista; trilha por evento)
-- [ ] Sinergias entre Aparelhos
-- [ ] Árvore da Quintessência (nós permanentes)
+- [x] Rituais, conquistas, provações e fontes extras de Quintessência
+- [x] Kit de áudio v2 (6 SFX em m4a, pools pré-carregados)
+- [ ] Trilhas de fundo por evento / ambiente
+- [ ] Sinergias entre Instrumentos
+- [ ] Árvore da Quintessência (nós permanentes — em progresso)
 
 ## 🙏 Créditos
 
 Projeto pessoal de **Matheus Chebel**. Tema, balanceamento e direção de arte desenvolvidos com apoio de IA. Ícones por [Tabler Icons](https://tabler.io/icons) (MIT).
+
+**Áudio (Freesound):** "water drop" por beskhu; "bubbles1" por kwahmah_02; "magic wand spell tinkle" por kneekoo; "success jingle" por titankaempfer; "whoosh-1" por infamouslazure; "mysterious sparkle flourish" por driftspeira. Licenças em [freesound.org](https://freesound.org).
 
 ---
 
