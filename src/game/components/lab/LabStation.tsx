@@ -1,19 +1,49 @@
-import React from 'react';
+import { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { IconLock } from '@tabler/icons-react-native';
 
 import { BASE, RADIUS, type Phase } from '@/constants/theme';
 import { ItemIcon } from '@/game/components/Sigil';
-import { StationShelf } from '@/game/components/lab/StationShelf';
 import { visualTier, tierTint } from '@/game/data/labTiers';
+import { useRevealOnUnlock } from '@/game/hooks/useRevealOnUnlock';
+import { useStationIdle } from '@/game/hooks/useStationIdle';
+import { useTierFlash } from '@/game/hooks/useTierFlash';
 
-export const LabStation = React.memo(function LabStation({
+const TIERS = ['I', 'II', 'III', 'IV', 'V'] as const;
+
+function TransmutationPips({
+  generatorId,
+  boughtUpgrades,
+}: {
+  generatorId: string;
+  boughtUpgrades: Record<string, true>;
+}) {
+  return (
+    <View style={styles.pips}>
+      {TIERS.map((tier) => {
+        const id = `${generatorId}_${tier}`;
+        const on = Boolean(boughtUpgrades[id]);
+        return (
+          <View
+            key={tier}
+            style={[styles.pip, { backgroundColor: on ? BASE.gold : BASE.bgElevated, opacity: on ? 1 : 0.35 }]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+export const LabStation = memo(function LabStation({
   id,
   name,
   owned,
   epsLabel,
   phase,
   animated,
+  justUnlocked,
+  boughtUpgrades,
 }: {
   id: string;
   name: string;
@@ -21,27 +51,40 @@ export const LabStation = React.memo(function LabStation({
   epsLabel: string;
   phase: Phase;
   animated: boolean;
+  justUnlocked?: boolean;
+  boughtUpgrades: Record<string, true>;
 }) {
   const tier = visualTier(owned);
   const tint = tierTint(tier, phase);
   const goldBadge = tier >= 4;
+  const revealStyle = useRevealOnUnlock(Boolean(justUnlocked));
+  const idleStyle = useStationIdle(animated);
+  const flashStyle = useTierFlash(tier);
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <ItemIcon id={id} ringColor={tint} size={30} />
-        <Text style={styles.name} numberOfLines={1}>
-          {name} <Text style={styles.count}>×{owned}</Text>
-        </Text>
-        <View style={[styles.badge, goldBadge ? styles.badgeGold : styles.badgeMuted]}>
-          <Text style={[styles.badgeTxt, { color: goldBadge ? BASE.goldInk : BASE.textMuted }]}>
-            NÍVEL {tier}
-          </Text>
+    <Animated.View style={[styles.card, revealStyle, idleStyle]}>
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, styles.flash, { backgroundColor: tint }, flashStyle]}
+      />
+      <View style={styles.heroRow}>
+        <ItemIcon id={id} kind="instrument" phase={phase} ringColor={tint} size={64} />
+        <View style={styles.headerMeta}>
+          <View style={styles.header}>
+            <Text style={styles.name} numberOfLines={2}>
+              {name} <Text style={styles.count}>×{owned}</Text>
+            </Text>
+            <View style={[styles.badge, goldBadge ? styles.badgeGold : styles.badgeMuted]}>
+              <Text style={[styles.badgeTxt, { color: goldBadge ? BASE.goldInk : BASE.textMuted }]}>
+                NÍVEL {tier}
+              </Text>
+            </View>
+          </View>
+          <TransmutationPips generatorId={id} boughtUpgrades={boughtUpgrades} />
         </View>
       </View>
-      <StationShelf id={id} owned={owned} tint={tint} animated={animated} />
       <Text style={styles.eps}>{epsLabel}</Text>
-    </View>
+    </Animated.View>
   );
 });
 
@@ -62,19 +105,31 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BASE.borderHair,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 11,
     marginBottom: 9,
+    overflow: 'hidden',
   },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  name: { flex: 1, fontSize: 14, color: BASE.textPrimary, fontFamily: 'CormorantGaramond_600SemiBold' },
+  flash: {
+    borderRadius: RADIUS.card,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  headerMeta: { flex: 1, gap: 6 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  name: { flex: 1, fontSize: 15, color: BASE.textPrimary, fontFamily: 'CormorantGaramond_600SemiBold' },
   count: { fontSize: 12, color: BASE.textMuted, fontFamily: 'SpaceGrotesk_500Medium' },
   badge: { borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
   badgeGold: { backgroundColor: BASE.gold },
   badgeMuted: { backgroundColor: BASE.bgElevated },
   badgeTxt: { fontSize: 10, letterSpacing: 0.5, fontFamily: 'SpaceGrotesk_500Medium' },
+  pips: { flexDirection: 'row', gap: 5 },
+  pip: { width: 8, height: 8, borderRadius: 4 },
   eps: {
-    marginTop: 6,
     fontSize: 11,
     color: BASE.textMuted,
     fontFamily: 'SpaceGrotesk_500Medium',

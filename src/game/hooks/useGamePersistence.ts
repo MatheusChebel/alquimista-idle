@@ -23,6 +23,9 @@ function persistCurrentGame() {
     boughtPermNodes: state.boughtPermNodes,
     unlockedAchievements: state.unlockedAchievements,
     activeEffects: state.activeEffects,
+    activeRitualEffects: state.activeRitualEffects,
+    ritualCooldowns: state.ritualCooldowns,
+    ritualsLaunched: state.ritualsLaunched,
     totalClicks: state.totalClicks,
     totalEssenceEarned: state.totalEssenceEarned,
     conjunctionsClicked: state.conjunctionsClicked,
@@ -31,6 +34,11 @@ function persistCurrentGame() {
     quintessence: state.quintessence,
     quintessenceEarned: state.quintessenceEarned,
     prestigePoints: state.prestigePoints,
+    quintRewardsClaimed: state.quintRewardsClaimed,
+    masteryClaimed: state.masteryClaimed,
+    collectionBonusesClaimed: state.collectionBonusesClaimed,
+    trialsCompleted: state.trialsCompleted,
+    runStartedAt: state.runStartedAt,
   });
 }
 

@@ -1,6 +1,6 @@
 import { GENERATORS } from '@/game/data/generators';
 
-/** Aparelhos desbloqueados + o próximo como teaser (seção 8.3b). */
+/** Instrumentos desbloqueados + o próximo como teaser (seção 8.3b). */
 export function getProgressiveGenerators(owned: Record<string, number>) {
   const visible: typeof GENERATORS = [];
 

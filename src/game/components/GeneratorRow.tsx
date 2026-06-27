@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BASE, Radius, Spacing } from '@/constants/theme';
 import { GENERATORS } from '@/game/data/generators';
+import { playSfx } from '@/game/audio/audio';
 import { AffordablePulse } from '@/game/components/effects/AffordablePulse';
 import { ItemIcon } from '@/game/components/icons/ItemIcon';
 import { useGenMultipliers } from '@/game/hooks/useGameStats';
@@ -40,7 +41,7 @@ export const GeneratorRow = memo(function GeneratorRow({ generatorId, compact = 
   const handleBuy = () => {
     if (!canAfford || locked) return;
     hapticPurchase();
-    useGameStore.getState().buyGenerator(generatorId);
+    if (useGameStore.getState().buyGenerator(generatorId)) playSfx('comprarInstrumento');
   };
 
   if (locked) {
@@ -52,7 +53,7 @@ export const GeneratorRow = memo(function GeneratorRow({ generatorId, compact = 
           compact && styles.lockedCompact,
           { backgroundColor: BASE.bgSurface, borderRadius: Radius.card },
         ]}>
-        <ItemIcon id={generatorId} color={theme.essence} accentColor={theme.accent} size={compact ? 36 : 44} />
+        <ItemIcon id={generatorId} kind="instrument" phase={theme.phase} color={theme.essence} size={compact ? 36 : 44} />
         <View style={[styles.info, compact && styles.infoCompact]}>
           <Text style={[gameText.generatorName, { color: BASE.textFaint, fontSize: compact ? 14 : 18 }]} numberOfLines={1}>
             {generator.displayName}
@@ -75,7 +76,7 @@ export const GeneratorRow = memo(function GeneratorRow({ generatorId, compact = 
           disabled={!canAfford}
           onPress={handleBuy}
           style={styles.compactPress}>
-          <ItemIcon id={generatorId} color={theme.essence} accentColor={theme.accent} size={36} />
+          <ItemIcon id={generatorId} kind="instrument" phase={theme.phase} color={theme.essence} size={36} />
           <Text style={[gameText.generatorName, styles.compactName, { color: BASE.textPrimary }]} numberOfLines={2}>
             {generator.displayName}
           </Text>
@@ -105,7 +106,7 @@ export const GeneratorRow = memo(function GeneratorRow({ generatorId, compact = 
         disabled={!canAfford}
         onPress={handleBuy}
         style={styles.press}>
-        <ItemIcon id={generatorId} color={theme.essence} accentColor={theme.accent} size={44} />
+        <ItemIcon id={generatorId} kind="instrument" phase={theme.phase} color={theme.essence} size={44} />
         <View style={styles.info}>
           <Text style={[gameText.generatorName, { color: BASE.textPrimary }]} numberOfLines={1}>
             {generator.displayName}

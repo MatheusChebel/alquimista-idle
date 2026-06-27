@@ -16,11 +16,23 @@ import {
   IconDroplet,
   IconInfinity,
   IconSparkles,
+  IconDoor,
+  IconClock,
+  IconDroplets,
+  IconPrism,
+  IconEye,
 } from '@tabler/icons-react-native';
 
-import { BASE } from '@/constants/theme';
+import { BASE, PHASE, type Phase } from '@/constants/theme';
+import {
+  CLICK_ICON,
+  RITUAL_ICON,
+  TRANSMUTATION_TIER_ICON,
+  transmutationTierFromId,
+} from '@/game/data/upgradeIcons';
 
-// id -> componente Tabler EXATO usado no mockup
+export type ItemIconKind = 'instrument' | 'transmutation' | 'click' | 'ritual';
+
 export const ICONS: Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
   alembic: IconFlask2,
   cauldron: IconSoup,
@@ -31,6 +43,11 @@ export const ICONS: Record<string, React.ComponentType<{ size?: number; color?: 
   familiar: IconFeather,
   portal: IconCircleDotted,
   tree: IconTree,
+  hiddenlab: IconDoor,
+  astralclock: IconClock,
+  voidcondenser: IconDroplets,
+  philprism: IconPrism,
+  cosmoseye: IconEye,
   click: IconHandFinger,
   click1: IconHandFinger,
   click2: IconHandStop,
@@ -45,7 +62,6 @@ export const ICONS: Record<string, React.ComponentType<{ size?: number; color?: 
   conjunction: IconSparkles,
 };
 
-// tom do glifo por item (alguns fogem da cor da categoria, como no mockup)
 export const ICON_TINT: Record<string, string> = {
   athanor: '#FF9A5C',
   crucible: BASE.gold,
@@ -80,21 +96,53 @@ export function Sigil({
   );
 }
 
+function resolveGlyph(
+  id: string,
+  kind: ItemIconKind,
+  ritualIconName?: string,
+): React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }> | null {
+  if (kind === 'transmutation') {
+    const tier = transmutationTierFromId(id);
+    return TRANSMUTATION_TIER_ICON[tier] ?? TRANSMUTATION_TIER_ICON.I;
+  }
+  if (kind === 'click') {
+    return CLICK_ICON[id] ?? CLICK_ICON.click1;
+  }
+  if (kind === 'ritual' && ritualIconName) {
+    return RITUAL_ICON[ritualIconName] ?? ICONS.essence;
+  }
+  return ICONS[id] ?? null;
+}
+
+export function ringColorForKind(kind: ItemIconKind, phase: Phase, essenceColor?: string): string {
+  if (kind === 'instrument') return essenceColor ?? PHASE[phase].essence;
+  if (kind === 'transmutation') return BASE.gold;
+  return BASE.arcane;
+}
+
 export function ItemIcon({
   id,
+  kind = 'instrument',
+  phase = 'nigredo',
   ringColor,
   size = 50,
   glyphColor,
+  ritualIconName,
 }: {
   id: string;
-  ringColor: string;
+  kind?: ItemIconKind;
+  phase?: Phase;
+  ringColor?: string;
   size?: number;
   glyphColor?: string;
+  ritualIconName?: string;
 }) {
-  const Glyph = ICONS[id];
-  const color = glyphColor ?? ICON_TINT[id] ?? ringColor;
+  const frame = ringColor ?? ringColorForKind(kind, phase);
+  const Glyph = resolveGlyph(id, kind, ritualIconName);
+  const color = glyphColor ?? (kind === 'instrument' ? (ICON_TINT[id] ?? frame) : frame);
+
   return (
-    <Sigil ringColor={ringColor} size={size}>
+    <Sigil ringColor={frame} size={size}>
       {Glyph ? <Glyph size={size * 0.48} color={color} strokeWidth={1.8} /> : null}
     </Sigil>
   );

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 import { BASE, RADIUS } from '@/constants/theme';
-import { ItemIcon } from '@/game/components/Sigil';
+import { ItemIcon, type ItemIconKind } from '@/game/components/Sigil';
 
 const BASE_ESSENCE = '#46E5C4';
 
@@ -12,6 +12,7 @@ export function QuickBuyCard({
   cost,
   affordable,
   ringColor = BASE_ESSENCE,
+  iconKind = 'instrument',
   onBuy,
 }: {
   id: string;
@@ -19,6 +20,7 @@ export function QuickBuyCard({
   cost: string;
   affordable: boolean;
   ringColor?: string;
+  iconKind?: ItemIconKind;
   onBuy: () => void;
 }) {
   return (
@@ -31,7 +33,7 @@ export function QuickBuyCard({
           borderWidth: affordable ? 1.5 : StyleSheet.hairlineWidth,
         },
       ]}>
-      <ItemIcon id={id} ringColor={ringColor} size={42} />
+      <ItemIcon id={id} kind={iconKind} ringColor={ringColor} size={42} />
       <Text style={styles.name}>{name}</Text>
       <View style={[styles.pill, affordable ? styles.pillGold : styles.pillGhost]}>
         <Text style={[styles.cost, { color: affordable ? BASE.goldInk : BASE.danger }]}>{cost} ✦</Text>

@@ -5,8 +5,10 @@ import {
   computeClickFrenzyMult,
   computeClickValue,
   computeGenMultipliers,
+  computeRitualClickMult,
   getGlobalMult,
   pruneActiveEffects,
+  pruneRitualEffects,
 } from '@/game/lib/economy';
 import { computeEps } from '@/game/lib/formulas';
 import { getPrestigeMult } from '@/game/lib/prestige';
@@ -23,14 +25,16 @@ export function useGameEps() {
   const boughtUpgrades = useGameStore((state) => state.boughtUpgrades);
   const unlockedAchievements = useGameStore((state) => state.unlockedAchievements);
   const activeEffects = useGameStore((state) => state.activeEffects);
+  const activeRitualEffects = useGameStore((state) => state.activeRitualEffects);
   const prestigePoints = useGameStore((state) => state.prestigePoints);
 
   return useMemo(() => {
     const genMultipliers = computeGenMultipliers(boughtUpgrades);
     const pruned = pruneActiveEffects(activeEffects);
-    const globalMult = getGlobalMult(unlockedAchievements, pruned, prestigePoints);
+    const rituals = pruneRitualEffects(activeRitualEffects);
+    const globalMult = getGlobalMult(unlockedAchievements, pruned, prestigePoints, rituals);
     return computeEps(owned, genMultipliers, globalMult);
-  }, [owned, boughtUpgrades, unlockedAchievements, activeEffects, prestigePoints]);
+  }, [owned, boughtUpgrades, unlockedAchievements, activeEffects, activeRitualEffects, prestigePoints]);
 }
 
 export function useClickValue() {
@@ -38,6 +42,7 @@ export function useClickValue() {
   const boughtPermNodes = useGameStore((state) => state.boughtPermNodes);
   const unlockedAchievements = useGameStore((state) => state.unlockedAchievements);
   const activeEffects = useGameStore((state) => state.activeEffects);
+  const activeRitualEffects = useGameStore((state) => state.activeRitualEffects);
   const prestigePoints = useGameStore((state) => state.prestigePoints);
   const owned = useGameStore((state) => state.owned);
   const boughtUpgrades = useGameStore((state) => state.boughtUpgrades);
@@ -45,16 +50,18 @@ export function useClickValue() {
   return useMemo(() => {
     const genMultipliers = computeGenMultipliers(boughtUpgrades);
     const pruned = pruneActiveEffects(activeEffects);
-    const globalMult = getGlobalMult(unlockedAchievements, pruned, prestigePoints);
+    const rituals = pruneRitualEffects(activeRitualEffects);
+    const globalMult = getGlobalMult(unlockedAchievements, pruned, prestigePoints, rituals);
     const eps = computeEps(owned, genMultipliers, globalMult);
     const perm = getPermanentBonuses(boughtPermNodes);
-    const base = computeClickValue(boughtClickUpgrades, eps, perm.clickMult);
-    return base * computeClickFrenzyMult(pruned);
+    const base = computeClickValue(boughtClickUpgrades, eps, owned, perm.clickMult);
+    return base * computeClickFrenzyMult(pruned) * computeRitualClickMult(rituals);
   }, [
     boughtClickUpgrades,
     boughtPermNodes,
     unlockedAchievements,
     activeEffects,
+    activeRitualEffects,
     prestigePoints,
     owned,
     boughtUpgrades,

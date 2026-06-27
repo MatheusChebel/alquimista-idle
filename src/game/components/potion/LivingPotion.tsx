@@ -7,7 +7,7 @@ import { ClickFloat } from '@/game/components/potion/ClickFloat';
 import { useCalmMode } from '@/game/hooks/useCalmMode';
 import { getEconomyContext } from '@/game/lib/economyRuntime';
 import { formatNumber } from '@/game/lib/formulas';
-import { playPlink } from '@/game/lib/audio/audioEngine';
+import { playSfx } from '@/game/audio/audio';
 import { gameText } from '@/game/lib/typography';
 import { useGameStore } from '@/game/store/gameStore';
 
@@ -24,7 +24,7 @@ export const LivingPotion = memo(function LivingPotion() {
     const label = `+${formatNumber(clickValue)}`;
 
     useGameStore.getState().click();
-    playPlink();
+    playSfx('destilar');
 
     if (!calm) {
       setFloat((prev) => ({ trigger: prev.trigger + 1, label }));

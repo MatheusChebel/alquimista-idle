@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-import { setAudioMuted } from '@/game/lib/audio/audioEngine';
+import { setMuted } from '@/game/audio/audio';
 
 const SETTINGS_KEY = 'game_settings_v1';
 
@@ -25,7 +25,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const raw = await AsyncStorage.getItem(SETTINGS_KEY);
       const soundEnabled = raw ? Boolean(JSON.parse(raw).soundEnabled ?? true) : true;
       set({ soundEnabled, ready: true });
-      setAudioMuted(!soundEnabled);
+      setMuted(!soundEnabled);
     } catch {
       set({ ready: true });
     }
@@ -33,7 +33,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setSoundEnabled: (soundEnabled) => {
     set({ soundEnabled });
-    setAudioMuted(!soundEnabled);
+    setMuted(!soundEnabled);
     void AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ soundEnabled }));
   },
 

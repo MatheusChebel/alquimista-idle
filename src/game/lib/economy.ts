@@ -1,18 +1,22 @@
 import { GENERATORS } from '@/game/data/generators';
-import { CLICK_UPGRADES, UPGRADES } from '@/game/data/upgrades';
+import { CLICK_UPGRADES } from '@/game/data/upgrades';
 import type { AstralEventDef } from '@/game/data/events';
-import type { ActiveEffect } from '@/game/types/game';
+import type { ActiveEffect, ActiveRitualEffect } from '@/game/types/game';
 import { getPrestigeMult } from '@/game/lib/prestige';
 
 const BASE_CLICK = 1;
 const SEAL_MULT_PER_ACHIEVEMENT = 1.02;
 
+export function totalInstruments(owned: Record<string, number>): number {
+  return Object.values(owned).reduce((sum, n) => sum + n, 0);
+}
+
 export function computeGenMultipliers(boughtUpgrades: Record<string, true>): Record<string, number> {
   const multipliers: Record<string, number> = {};
 
   for (const generator of GENERATORS) {
-    const purchased = UPGRADES.filter(
-      (upgrade) => upgrade.generatorId === generator.id && boughtUpgrades[upgrade.id],
+    const purchased = Object.keys(boughtUpgrades).filter((id) =>
+      id.startsWith(`${generator.id}_`),
     ).length;
 
     if (purchased > 0) {
@@ -26,22 +30,35 @@ export function computeGenMultipliers(boughtUpgrades: Record<string, true>): Rec
 export function computeClickValue(
   boughtClickUpgrades: Record<string, true>,
   eps: number,
+  owned: Record<string, number>,
   permanentClickMult = 1,
 ): number {
   let flatMult = 1;
   let epsPercentSum = 0;
+  let perInstrumentBase = 0;
+  let perInstrumentMult = 1;
 
   for (const upgrade of CLICK_UPGRADES) {
     if (!boughtClickUpgrades[upgrade.id]) continue;
 
     if (upgrade.kind === 'flatMult') {
       flatMult *= upgrade.value;
-    } else {
+    } else if (upgrade.kind === 'epsPercent') {
       epsPercentSum += upgrade.value;
+    } else if (upgrade.kind === 'perInstrument') {
+      perInstrumentBase += upgrade.value;
+    } else if (upgrade.kind === 'perInstrumentMult') {
+      perInstrumentMult *= upgrade.value;
     }
   }
 
-  return (BASE_CLICK * flatMult + epsPercentSum * eps) * permanentClickMult;
+  const instruments = totalInstruments(owned);
+  const base =
+    BASE_CLICK * flatMult +
+    perInstrumentBase * instruments * perInstrumentMult +
+    epsPercentSum * eps;
+
+  return base * permanentClickMult;
 }
 
 export function getUpgradeCost(generatorId: string, costMult: number): number {
@@ -59,12 +76,34 @@ export function pruneActiveEffects(effects: ActiveEffect[], now = Date.now()): A
   return effects.filter((effect) => effect.endsAt > now);
 }
 
+export function pruneRitualEffects(effects: ActiveRitualEffect[], now = Date.now()): ActiveRitualEffect[] {
+  return effects.filter((effect) => effect.endsAt > now);
+}
+
 export function computeEventGlobalMult(effects: ActiveEffect[], now = Date.now()): number {
   let mult = 1;
   for (const effect of effects) {
     if (effect.endsAt <= now) continue;
     if (effect.kind === 'frenzy') mult *= 7;
     if (effect.kind === 'eclipse') mult *= 0.5;
+  }
+  return mult;
+}
+
+export function computeRitualEpsMult(effects: ActiveRitualEffect[], now = Date.now()): number {
+  let mult = 1;
+  for (const effect of effects) {
+    if (effect.endsAt <= now) continue;
+    if (effect.effect === 'epsMult') mult *= effect.magnitude;
+  }
+  return mult;
+}
+
+export function computeRitualClickMult(effects: ActiveRitualEffect[], now = Date.now()): number {
+  let mult = 1;
+  for (const effect of effects) {
+    if (effect.endsAt <= now) continue;
+    if (effect.effect === 'clickMult') mult *= effect.magnitude;
   }
   return mult;
 }
@@ -94,11 +133,13 @@ export function getGlobalMult(
   unlockedAchievements: Record<string, true>,
   activeEffects: ActiveEffect[],
   prestigePoints: number,
+  ritualEffects: ActiveRitualEffect[] = [],
   now = Date.now(),
 ): number {
   return (
     computeSealMult(unlockedAchievements) *
     computeEventGlobalMult(activeEffects, now) *
+    computeRitualEpsMult(ritualEffects, now) *
     getPrestigeMult(prestigePoints)
   );
 }

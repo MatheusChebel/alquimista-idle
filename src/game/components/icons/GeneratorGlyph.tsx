@@ -7,7 +7,7 @@ type GeneratorGlyphProps = {
   size?: number;
 };
 
-/** Glifos alquímicos simplificados — um por aparelho (seção 9). */
+/** Glifos alquímicos simplificados — um por instrumento (seção 9). */
 export function GeneratorGlyph({ id, size = 36 }: GeneratorGlyphProps) {
   const theme = usePhaseTheme();
   const stroke = theme.accent;

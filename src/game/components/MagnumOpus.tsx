@@ -19,6 +19,7 @@ import {
   tabularNums,
 } from '@/constants/theme';
 import { QUINTESSENCE_NODES } from '@/game/data/quintessence';
+import { playSfx } from '@/game/audio/audio';
 import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
 import { formatNumber } from '@/game/lib/formulas';
 import {
@@ -104,7 +105,10 @@ export function MagnumOpusRoot() {
           text: 'Transmutar',
           style: 'destructive',
           onPress: () => {
-            if (prestige()) closeMagnumOpus();
+            if (prestige()) {
+              playSfx('conquista');
+              closeMagnumOpus();
+            }
           },
         },
       ],

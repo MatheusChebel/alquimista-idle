@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BASE, BottomTabInset, Spacing } from '@/constants/theme';
 import { ACHIEVEMENTS } from '@/game/data/achievements';
 import { AchievementList } from '@/game/components/achievements/AchievementList';
+import { TrialList } from '@/game/components/trials/TrialList';
 import { GeneratorList } from '@/game/components/GeneratorList';
 import { GrandeObraWheel } from '@/game/components/prestige/GrandeObraWheel';
 import { ClickUpgradeList, TransmutationList } from '@/game/components/UpgradeList';
@@ -22,7 +23,7 @@ import { useGameStore } from '@/game/store/gameStore';
 type GrimorioTab = 'aparelhos' | 'toque' | 'magnum' | 'selos';
 
 const TABS: { value: GrimorioTab; label: string }[] = [
-  { value: 'aparelhos', label: 'Aparelhos' },
+  { value: 'aparelhos', label: 'Instrumentos' },
   { value: 'toque', label: 'Toque' },
   { value: 'magnum', label: 'Magnum' },
   { value: 'selos', label: 'Selos' },
@@ -54,7 +55,7 @@ export default function GrimorioScreen() {
   const openMagnumOpus = useGameStore((s) => s.openMagnumOpus);
 
   const eyebrow = useMemo(() => {
-    if (tab === 'aparelhos') return 'ESSÊNCIA POR SEGUNDO';
+    if (tab === 'aparelhos') return 'INSTRUMENTOS — ESSÊNCIA POR SEGUNDO';
     if (tab === 'toque') return 'POR TOQUE';
     if (tab === 'selos') return 'CONQUISTAS DO ALQUIMISTA';
     return 'A GRANDE OBRA';
@@ -118,6 +119,8 @@ export default function GrimorioScreen() {
           {tab === 'selos' && (
             <View style={[styles.section, { backgroundColor: BASE.bgSurface, borderColor: BASE.borderHair }]}>
               <AchievementList />
+              <Text style={[gameText.labelSmall, styles.subEyebrow, { color: BASE.arcane }]}>PROVAÇÕES</Text>
+              <TrialList />
             </View>
           )}
         </ScrollView>
@@ -147,6 +150,12 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     letterSpacing: 1.4,
     width: '100%',
+  },
+  subEyebrow: {
+    alignSelf: 'flex-start',
+    letterSpacing: 1.2,
+    width: '100%',
+    marginTop: Spacing.two,
   },
   section: {
     width: '100%',

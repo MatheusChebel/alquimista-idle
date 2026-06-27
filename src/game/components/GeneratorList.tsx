@@ -35,7 +35,7 @@ export const GeneratorList = memo(function GeneratorList({ eyebrow }: GeneratorL
       {eyebrow ? (
         <Text style={[gameText.labelSmall, styles.eyebrow, { color: theme.accent }]}>{eyebrow}</Text>
       ) : (
-        <Text style={[gameText.generatorName, styles.title, { color: theme.accent }]}>Aparelhos</Text>
+        <Text style={[gameText.generatorName, styles.title, { color: theme.accent }]}>Instrumentos</Text>
       )}
       <TwoColumnGrid minItems={4}>
         {generators.map((generator) => (

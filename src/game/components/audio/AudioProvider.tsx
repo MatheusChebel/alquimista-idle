@@ -1,16 +1,9 @@
 import { useEffect, type ReactNode } from 'react';
-import { AppState } from 'react-native';
 
-import {
-  initAudioEngine,
-  isAudioAvailable,
-  pauseAmbient,
-  resumeAmbient,
-  setAudioMuted,
-} from '@/game/lib/audio/audioEngine';
+import { initAudio, isAudioReady, setMuted } from '@/game/audio/audio';
 import { useSettingsStore } from '@/game/store/settingsStore';
 
-/** Inicializa áudio + drone ambiente (seção 12). */
+/** Inicializa pools de SFX no boot e sincroniza mudo com settings. */
 export function AudioProvider({ children }: { children: ReactNode }) {
   const ready = useSettingsStore((s) => s.ready);
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
@@ -23,19 +16,11 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    void initAudioEngine().then(() => {
-      setAudioMuted(!soundEnabled);
-      setAudioNativeAvailable(isAudioAvailable());
+    void initAudio().then((ok) => {
+      setMuted(!soundEnabled);
+      setAudioNativeAvailable(ok && isAudioReady());
     });
   }, [ready, soundEnabled, setAudioNativeAvailable]);
-
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') resumeAmbient();
-      else pauseAmbient();
-    });
-    return () => sub.remove();
-  }, []);
 
   return children;
 }

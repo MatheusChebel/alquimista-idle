@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from 'expo-router';
 
@@ -29,26 +29,34 @@ export const LabScreen = memo(function LabScreen() {
   const calm = useCalmMode();
   const theme = usePhaseTheme();
   const phase = theme.phase as Phase;
+  const prevOwnedRef = useRef<Record<string, number>>({});
 
   const owned = useGameStore((s) => s.owned);
+  const boughtUpgrades = useGameStore((s) => s.boughtUpgrades);
   const unlockedAchievements = useGameStore((s) => s.unlockedAchievements);
   const activeEffects = useGameStore((s) => s.activeEffects);
+  const activeRitualEffects = useGameStore((s) => s.activeRitualEffects);
   const prestigePoints = useGameStore((s) => s.prestigePoints);
   const genMultipliers = useGenMultipliers();
 
-  const animated = focused && !calm;
-
   const globalMult = useMemo(
-    () => getGlobalMult(unlockedAchievements, activeEffects, prestigePoints),
-    [unlockedAchievements, activeEffects, prestigePoints],
+    () => getGlobalMult(unlockedAchievements, activeEffects, prestigePoints, activeRitualEffects),
+    [unlockedAchievements, activeEffects, prestigePoints, activeRitualEffects],
   );
 
-  const stations = useMemo(
-    () => GENERATORS.filter((g) => (owned[g.id] ?? 0) > 0),
-    [owned],
-  );
-
+  const stations = useMemo(() => GENERATORS.filter((g) => (owned[g.id] ?? 0) > 0), [owned]);
   const nextLocked = useMemo(() => getNextLockedGenerator(owned), [owned]);
+
+  const justUnlockedMap = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const gen of GENERATORS) {
+      const prev = prevOwnedRef.current[gen.id] ?? 0;
+      const cur = owned[gen.id] ?? 0;
+      if (prev === 0 && cur === 1) map[gen.id] = true;
+    }
+    prevOwnedRef.current = { ...owned };
+    return map;
+  }, [owned]);
 
   if (stations.length === 0 && !nextLocked) return null;
 
@@ -67,7 +75,9 @@ export const LabScreen = memo(function LabScreen() {
             owned={count}
             epsLabel={`+${formatNumber(eps)} /seg`}
             phase={phase}
-            animated={animated}
+            animated={focused && !calm}
+            justUnlocked={justUnlockedMap[gen.id]}
+            boughtUpgrades={boughtUpgrades}
           />
         );
       })}

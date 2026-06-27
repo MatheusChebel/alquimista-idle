@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BASE, Radius, Spacing } from '@/constants/theme';
 import { AffordablePulse } from '@/game/components/effects/AffordablePulse';
 import { ItemIcon } from '@/game/components/icons/ItemIcon';
-import type { IconCategory } from '@/game/data/icons';
+import type { ItemIconKind } from '@/game/components/Sigil';
 import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
 import { useThrottledAffordable } from '@/game/hooks/useThrottledAffordable';
 import { formatNumber } from '@/game/lib/formulas';
@@ -17,18 +18,20 @@ type UpgradeRowProps = {
   canAfford?: boolean;
   locked?: boolean;
   iconId?: string;
-  category?: IconCategory;
+  iconKind?: ItemIconKind;
+  category?: 'generator' | 'click' | 'mystic';
   compact?: boolean;
   onBuy: () => void;
 };
 
-export function UpgradeRow({
+export const UpgradeRow = memo(function UpgradeRow({
   displayName,
   description,
   cost,
   canAfford: canAffordProp,
   locked = false,
   iconId = 'essence',
+  iconKind,
   category = 'click',
   compact = false,
   onBuy,
@@ -46,13 +49,7 @@ export function UpgradeRow({
   if (locked) {
     return (
       <View style={[styles.row, styles.rowLockedStatic, compact && styles.compactLocked]}>
-        <ItemIcon
-          id={iconId}
-          category={category}
-          color={theme.essence}
-          accentColor={theme.accent}
-          size={compact ? 34 : 40}
-        />
+        <ItemIcon id={iconId} kind={iconKind} category={category} phase={theme.phase} color={theme.essence} size={compact ? 34 : 40} />
         <View style={[styles.info, compact && styles.infoCompact]}>
           <Text
             style={[gameText.generatorName, { color: BASE.textFaint, fontSize: compact ? 13 : 18 }]}
@@ -83,7 +80,7 @@ export function UpgradeRow({
           disabled={!canAfford}
           onPress={handleBuy}
           style={styles.compactPress}>
-          <ItemIcon id={iconId} category={category} color={theme.essence} accentColor={theme.accent} size={34} />
+          <ItemIcon id={iconId} kind={iconKind} category={category} phase={theme.phase} color={theme.essence} size={34} />
           <Text style={[gameText.generatorName, styles.compactName, { color: BASE.textPrimary }]} numberOfLines={2}>
             {displayName}
           </Text>
@@ -110,7 +107,7 @@ export function UpgradeRow({
         disabled={!canAfford}
         onPress={handleBuy}
         style={styles.press}>
-        <ItemIcon id={iconId} category={category} color={theme.essence} accentColor={theme.accent} size={40} />
+        <ItemIcon id={iconId} kind={iconKind} category={category} phase={theme.phase} color={theme.essence} size={40} />
         <View style={styles.info}>
           <Text style={[gameText.generatorName, { color: BASE.textPrimary }]}>{displayName}</Text>
           <Text style={[gameText.flavor, { color: BASE.textMuted }]}>{description}</Text>
@@ -121,7 +118,7 @@ export function UpgradeRow({
       </Pressable>
     </AffordablePulse>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {

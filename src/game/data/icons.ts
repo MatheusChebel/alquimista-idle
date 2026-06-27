@@ -1,6 +1,6 @@
 export type IconCategory = 'generator' | 'click' | 'mystic';
 
-/** Categorias de anel — KIT_VISUAL_CURSOR.md §7 (Aparelhos = Essência; Toque/Místico = dourado). */
+/** Categorias de anel — KIT_VISUAL_CURSOR.md §7 (Instrumentos = Essência; Toque/Místico = dourado). */
 export type IconRef = {
   category: IconCategory;
 };

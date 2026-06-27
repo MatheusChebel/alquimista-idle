@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BASE, Spacing } from '@/constants/theme';
+import { playSfx } from '@/game/audio/audio';
 import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
 import { gameText } from '@/game/lib/typography';
 import { useGameStore } from '@/game/store/gameStore';
@@ -14,6 +15,7 @@ export function AchievementToast() {
 
   useEffect(() => {
     if (!toast) return;
+    playSfx('conquista');
     const timer = setTimeout(() => clearAchievementToast(), 2800);
     return () => clearTimeout(timer);
   }, [toast, clearAchievementToast]);

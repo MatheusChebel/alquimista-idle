@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { BASE, Spacing } from '@/constants/theme';
 import { CLICK_UPGRADES, UPGRADES } from '@/game/data/upgrades';
+import { playSfx } from '@/game/audio/audio';
 import { UpgradeRow } from '@/game/components/UpgradeRow';
 import { TwoColumnGrid } from '@/game/components/ui/TwoColumnGrid';
 import { getUpgradeCost } from '@/game/lib/economy';
@@ -37,8 +38,8 @@ export function TransmutationList() {
                   cost={cost}
                   locked
                   compact={useGrid}
-                  iconId={upgrade.generatorId}
-                  category="generator"
+                  iconId={upgrade.id}
+                  iconKind="transmutation"
                   onBuy={() => {}}
                 />
               );
@@ -48,12 +49,14 @@ export function TransmutationList() {
               <UpgradeRow
                 key={upgrade.id}
                 displayName={upgrade.displayName}
-                description="Dobra a produção deste Aparelho"
+                description="Dobra a produção deste Instrumento"
                 cost={cost}
                 compact={useGrid}
-                iconId={upgrade.generatorId}
-                category="generator"
-                onBuy={() => buyUpgrade(upgrade.id)}
+                iconId={upgrade.id}
+                iconKind="transmutation"
+                onBuy={() => {
+                  if (buyUpgrade(upgrade.id)) playSfx('comprarUpgrade');
+                }}
               />
             );
           })}
@@ -85,12 +88,16 @@ export function ClickUpgradeList() {
               description={
                 upgrade.kind === 'flatMult'
                   ? `Multiplica o clique por ${upgrade.value}`
-                  : `Clique vale +${upgrade.value * 100}% do EPS atual`
+                  : upgrade.kind === 'epsPercent'
+                    ? `Clique vale +${upgrade.value * 100}% do EPS atual`
+                    : upgrade.kind === 'perInstrument'
+                      ? `+${upgrade.value} por Instrumento possuído`
+                      : `Multiplica bônus por Instrumento ×${upgrade.value}`
               }
               cost={upgrade.cost}
               compact={useGrid}
               iconId={upgrade.id}
-              category="click"
+              iconKind="click"
               onBuy={() => buyClickUpgrade(upgrade.id)}
             />
           ))}

@@ -12,7 +12,7 @@ import { SparkBurst } from '@/game/components/effects/SparkBurst';
 import { ConjunctionSymbol } from '@/game/components/icons/ConjunctionSymbol';
 import { useAstralEvents } from '@/game/hooks/useAstralEvents';
 import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
-import { playChime, playShimmer } from '@/game/lib/audio/audioEngine';
+import { playSfx } from '@/game/audio/audio';
 import { hapticAstral } from '@/game/lib/haptics';
 import { useGameStore } from '@/game/store/gameStore';
 
@@ -36,7 +36,6 @@ export function AstralConjunction({ enabled }: AstralConjunctionProps) {
       withSpring(1.08, { damping: 10, stiffness: 140 }),
       withSpring(1, { damping: 12, stiffness: 160 }),
     );
-    playShimmer();
   }, [spawn, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -46,11 +45,12 @@ export function AstralConjunction({ enabled }: AstralConjunctionProps) {
 
   const handlePress = () => {
     hapticAstral();
-    playChime();
+    const event = triggerAstralEvent();
+    playSfx('conjuncao');
+    if (event.apply === 'lucky') playSfx('sorte');
     setSparkTrigger((n) => n + 1);
     setFlash(true);
     setTimeout(() => setFlash(false), 180);
-    triggerAstralEvent();
     dismiss();
   };
 

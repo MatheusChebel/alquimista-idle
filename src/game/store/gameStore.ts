@@ -4,11 +4,19 @@ import { ACHIEVEMENTS } from '@/game/data/achievements';
 import { ASTRAL_EVENTS } from '@/game/data/events';
 import { GENERATORS } from '@/game/data/generators';
 import { getPermanentBonuses, QUINTESSENCE_NODES } from '@/game/data/quintessence';
+import { RITUALS } from '@/game/data/rituals';
 import { CLICK_UPGRADES, UPGRADES } from '@/game/data/upgrades';
-import { getUpgradeCost, pickAstralEvent, pruneActiveEffects } from '@/game/lib/economy';
+import {
+  getUpgradeCost,
+  pickAstralEvent,
+  pruneActiveEffects,
+  pruneRitualEffects,
+} from '@/game/lib/economy';
 import { getEconomyContext } from '@/game/lib/economyRuntime';
 import { formatNumber, nextCost } from '@/game/lib/formulas';
+import { applyQuintessenceBonuses } from '@/game/lib/quintessenceBonuses';
 import { calculatePrestigeGain } from '@/game/lib/prestige';
+import { checkTrials } from '@/game/lib/trials';
 import type { GameStore } from '@/game/types/game';
 
 let lastAchievementCheckAt = 0;
@@ -26,6 +34,9 @@ const createInitialState = () => ({
   boughtPermNodes: {} as Record<string, true>,
   unlockedAchievements: {} as Record<string, true>,
   activeEffects: [],
+  activeRitualEffects: [],
+  ritualCooldowns: {} as Record<string, number>,
+  ritualsLaunched: 0,
   totalClicks: 0,
   totalEssenceEarned: 0,
   conjunctionsClicked: 0,
@@ -34,11 +45,17 @@ const createInitialState = () => ({
   quintessence: 0,
   quintessenceEarned: 0,
   prestigePoints: 0,
+  quintRewardsClaimed: {} as Record<string, true>,
+  masteryClaimed: {} as Record<string, true>,
+  collectionBonusesClaimed: {} as Record<string, true>,
+  trialsCompleted: {} as Record<string, true>,
+  runStartedAt: Date.now(),
   lastTick: Date.now(),
   lastEventBanner: null as string | null,
   luckyPopup: null as string | null,
   achievementToast: null as string | null,
   magnumOpusOpen: false,
+  godMode: false,
 });
 
 function checkAchievements(state: GameStore): Partial<GameStore> {
@@ -47,29 +64,45 @@ function checkAchievements(state: GameStore): Partial<GameStore> {
   }
 
   const updates: Partial<GameStore> = {};
-  let ghostClicksPerSec = state.ghostClicksPerSec;
   const unlockedAchievements = { ...state.unlockedAchievements };
+  const quintRewardsClaimed = { ...state.quintRewardsClaimed };
+  let quintessence = state.quintessence;
+  let quintessenceEarned = state.quintessenceEarned;
   let newestAchievement: string | null = null;
 
   for (const achievement of ACHIEVEMENTS) {
     if (unlockedAchievements[achievement.id]) continue;
 
-    const snapshot = { ...state, ...updates, unlockedAchievements, ghostClicksPerSec };
+    const snapshot = { ...state, ...updates, unlockedAchievements, quintessence };
     if (!achievement.check(snapshot)) continue;
 
     unlockedAchievements[achievement.id] = true;
     newestAchievement = achievement.displayName;
-    if (achievement.grantsGhostClicks) {
-      ghostClicksPerSec += achievement.grantsGhostClicks;
+    if (!quintRewardsClaimed[achievement.id]) {
+      quintessence += achievement.quintReward;
+      quintessenceEarned += achievement.quintReward;
+      quintRewardsClaimed[achievement.id] = true;
     }
   }
 
   updates.unlockedAchievements = unlockedAchievements;
-  updates.ghostClicksPerSec = ghostClicksPerSec;
+  updates.quintRewardsClaimed = quintRewardsClaimed;
+  updates.quintessence = quintessence;
+  updates.quintessenceEarned = quintessenceEarned;
   if (newestAchievement) {
     updates.achievementToast = newestAchievement;
   }
   return updates;
+}
+
+function applyMetaProgress(state: GameStore): Partial<GameStore> {
+  const merged = { ...state };
+  const achievementUpdates = checkAchievements(merged);
+  Object.assign(merged, achievementUpdates);
+  const quintUpdates = applyQuintessenceBonuses(merged);
+  Object.assign(merged, quintUpdates);
+  const trialUpdates = checkTrials(merged);
+  return { ...achievementUpdates, ...quintUpdates, ...trialUpdates };
 }
 
 function addEssence(state: GameStore, amount: number): Partial<GameStore> {
@@ -114,7 +147,7 @@ function flushPendingClicks(
   if (shouldRunAchievementCheck(now)) {
     Object.assign(
       update,
-      checkAchievements({
+      applyMetaProgress({
         ...state,
         essence: nextEssence,
         totalClicks: nextClicks,
@@ -156,12 +189,12 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   buyGenerator: (id: string) => {
     flushPendingClicksNow(set, get);
     const generator = GENERATORS.find((item) => item.id === id);
-    if (!generator) return;
+    if (!generator) return false;
 
     const state = get();
     const owned = state.owned[id] ?? 0;
     const cost = nextCost(generator.baseCost, owned);
-    if (state.essence < cost) return;
+    if (state.essence < cost) return false;
 
     const nextState = {
       ...state,
@@ -170,22 +203,23 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       lastTick: Date.now(),
     };
 
-    set({ ...nextState, ...checkAchievements(nextState) });
+    set({ ...nextState, ...applyMetaProgress(nextState) });
+    return true;
   },
 
   buyUpgrade: (id: string) => {
     flushPendingClicksNow(set, get);
     const upgrade = UPGRADES.find((item) => item.id === id);
-    if (!upgrade) return;
+    if (!upgrade) return false;
 
     const state = get();
-    if (state.boughtUpgrades[id]) return;
+    if (state.boughtUpgrades[id]) return false;
 
     const ownedCount = state.owned[upgrade.generatorId] ?? 0;
-    if (ownedCount < upgrade.unlockAt) return;
+    if (ownedCount < upgrade.unlockAt) return false;
 
     const cost = getUpgradeCost(upgrade.generatorId, upgrade.costMult);
-    if (state.essence < cost) return;
+    if (state.essence < cost) return false;
 
     const nextState = {
       ...state,
@@ -194,7 +228,8 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       lastTick: Date.now(),
     };
 
-    set({ ...nextState, ...checkAchievements(nextState) });
+    set({ ...nextState, ...applyMetaProgress(nextState) });
+    return true;
   },
 
   buyClickUpgrade: (id: string) => {
@@ -213,7 +248,49 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       lastTick: Date.now(),
     };
 
-    set({ ...nextState, ...checkAchievements(nextState) });
+    set({ ...nextState, ...applyMetaProgress(nextState) });
+  },
+
+  castRitual: (id: string) => {
+    flushPendingClicksNow(set, get);
+    const ritual = RITUALS.find((r) => r.id === id);
+    if (!ritual) return false;
+
+    const state = get();
+    const now = Date.now();
+    if (state.totalEssenceEarned < ritual.unlockEssence) return false;
+    if ((state.ritualCooldowns[id] ?? 0) > now) return false;
+
+    const { eps, activeRitualEffects } = getEconomyContext(state, now);
+    const ritualCooldowns = { ...state.ritualCooldowns, [id]: now + ritual.cooldownMs };
+    const ritualsLaunched = state.ritualsLaunched + 1;
+
+    let nextState: GameStore = {
+      ...state,
+      ritualCooldowns,
+      ritualsLaunched,
+      activeRitualEffects: [...activeRitualEffects],
+      lastTick: now,
+    };
+
+    if (ritual.effect === 'instantEssence') {
+      const gain = eps * ritual.magnitude;
+      nextState = {
+        ...nextState,
+        essence: state.essence + gain,
+        totalEssenceEarned: state.totalEssenceEarned + gain,
+      };
+    } else {
+      nextState.activeRitualEffects.push({
+        id: `${ritual.id}-${now}`,
+        effect: ritual.effect,
+        magnitude: ritual.magnitude,
+        endsAt: now + ritual.durationMs,
+      });
+    }
+
+    set({ ...nextState, ...applyMetaProgress(nextState) });
+    return true;
   },
 
   buyQuintessenceNode: (id: string) => {
@@ -246,8 +323,11 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       boughtUpgrades: {},
       boughtClickUpgrades: {},
       activeEffects: [],
+      activeRitualEffects: [],
+      ritualCooldowns: {},
       lastEventBanner: null,
       luckyPopup: null,
+      runStartedAt: Date.now(),
       prestigePoints: state.prestigePoints + gained,
       quintessence: state.quintessence + gained,
       quintessenceEarned: state.quintessenceEarned + gained,
@@ -308,10 +388,10 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
     set({
       ...baseUpdate,
-      ...checkAchievements({ ...state, ...baseUpdate }),
+      ...applyMetaProgress({ ...state, ...baseUpdate }),
     });
 
-    return event.displayName;
+    return { displayName: event.displayName, apply: event.apply };
   },
 
   clearEventBanner: () => set({ lastEventBanner: null }),
@@ -322,6 +402,34 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
   closeMagnumOpus: () => set({ magnumOpusOpen: false }),
 
+  toggleGodMode: () => set((s) => ({ godMode: !s.godMode })),
+
+  devAddEssence: (n: number) => {
+    const state = get();
+    set({
+      essence: state.essence + n,
+      totalEssenceEarned: state.totalEssenceEarned + n,
+    });
+  },
+
+  devAddQuintessence: (n: number) => {
+    const state = get();
+    set({
+      quintessence: state.quintessence + n,
+      quintessenceEarned: state.quintessenceEarned + n,
+    });
+  },
+
+  devResetSave: () => {
+    lastAchievementCheckAt = 0;
+    pendingClicks = 0;
+    if (clickFlushTimer) {
+      clearTimeout(clickFlushTimer);
+      clickFlushTimer = null;
+    }
+    set({ ...createInitialState() });
+  },
+
   tick: (deltaMs: number) => {
     if (pendingClicks > 0) {
       flushPendingClicksNow(set, get);
@@ -329,9 +437,11 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
     const state = get();
     const now = Date.now();
-    const { activeEffects, eps, clickValue } = getEconomyContext(state, now);
+    const { activeEffects, activeRitualEffects, eps, clickValue } = getEconomyContext(state, now);
 
-    const effectsChanged = activeEffects.length !== state.activeEffects.length;
+    const effectsChanged =
+      activeEffects.length !== state.activeEffects.length ||
+      activeRitualEffects.length !== state.activeRitualEffects.length;
     const passive = eps * (deltaMs / 1000);
     const ghost = clickValue * state.ghostClicksPerSec * (deltaMs / 1000);
     const earned = passive + ghost;
@@ -348,22 +458,25 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
     if (effectsChanged) {
       update.activeEffects = activeEffects;
+      update.activeRitualEffects = activeRitualEffects;
     }
 
     if (shouldRunAchievementCheck(now)) {
-      set({
-        ...update,
-        ...checkAchievements({
-          ...state,
-          essence: newEssence,
-          totalEssenceEarned: newTotal,
-          activeEffects: effectsChanged ? activeEffects : state.activeEffects,
-        }),
-      });
-      return;
+      const merged = {
+        ...state,
+        essence: newEssence,
+        totalEssenceEarned: newTotal,
+        activeEffects: effectsChanged ? activeEffects : state.activeEffects,
+        activeRitualEffects: effectsChanged ? activeRitualEffects : state.activeRitualEffects,
+      };
+      set({ ...update, ...applyMetaProgress(merged) });
+    } else {
+      set(update);
     }
 
-    set(update);
+    if (get().godMode) {
+      set({ essence: 1e30 });
+    }
   },
 
   hydrate: (saved) => {
@@ -375,6 +488,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       boughtPermNodes: saved.boughtPermNodes ?? state.boughtPermNodes,
       unlockedAchievements: saved.unlockedAchievements ?? state.unlockedAchievements,
       activeEffects: saved.activeEffects ?? state.activeEffects,
+      activeRitualEffects: saved.activeRitualEffects ?? state.activeRitualEffects,
+      ritualCooldowns: saved.ritualCooldowns ?? state.ritualCooldowns,
+      ritualsLaunched: saved.ritualsLaunched ?? state.ritualsLaunched,
       totalClicks: saved.totalClicks ?? state.totalClicks,
       totalEssenceEarned: saved.totalEssenceEarned ?? state.totalEssenceEarned,
       conjunctionsClicked: saved.conjunctionsClicked ?? state.conjunctionsClicked,
@@ -383,6 +499,11 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       quintessence: saved.quintessence ?? state.quintessence,
       quintessenceEarned: saved.quintessenceEarned ?? state.quintessenceEarned,
       prestigePoints: saved.prestigePoints ?? state.prestigePoints,
+      quintRewardsClaimed: saved.quintRewardsClaimed ?? state.quintRewardsClaimed,
+      masteryClaimed: saved.masteryClaimed ?? state.masteryClaimed,
+      collectionBonusesClaimed: saved.collectionBonusesClaimed ?? state.collectionBonusesClaimed,
+      trialsCompleted: saved.trialsCompleted ?? state.trialsCompleted,
+      runStartedAt: saved.runStartedAt ?? state.runStartedAt,
       lastTick: saved.lastTick ?? state.lastTick,
     }));
   },

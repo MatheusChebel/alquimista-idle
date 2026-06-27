@@ -2,7 +2,9 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BASE, SPACE } from '@/constants/theme';
+import { playSfx } from '@/game/audio/audio';
 import { QuickBuyCard } from '@/game/components/QuickBuyCard';
+import type { ItemIconKind } from '@/game/components/Sigil';
 import { CLICK_UPGRADES, UPGRADES } from '@/game/data/upgrades';
 import { GENERATORS } from '@/game/data/generators';
 import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
@@ -12,21 +14,19 @@ import { formatNumber, nextCost } from '@/game/lib/formulas';
 import { hapticPurchase } from '@/game/lib/haptics';
 import { gameText } from '@/game/lib/typography';
 import { useGameStore } from '@/game/store/gameStore';
-import { ringColorForCategory } from '@/game/components/icons/ItemIcon';
 
 type QuickItem = {
   key: string;
   label: string;
   cost: number;
   iconId: string;
-  category: 'generator' | 'click' | 'mystic';
+  iconKind: ItemIconKind;
+  ringColor: string;
   onBuy: () => void;
 };
 
 function QuickBuyTile({ item }: { item: QuickItem }) {
-  const theme = usePhaseTheme();
   const canAfford = useThrottledAffordable(item.cost);
-  const ringColor = ringColorForCategory(item.category, theme.essence);
 
   const handleBuy = () => {
     if (!canAfford) return;
@@ -40,13 +40,15 @@ function QuickBuyTile({ item }: { item: QuickItem }) {
       name={item.label}
       cost={formatNumber(item.cost)}
       affordable={canAfford}
-      ringColor={ringColor}
+      ringColor={item.ringColor}
+      iconKind={item.iconKind}
       onBuy={handleBuy}
     />
   );
 }
 
 export const QuickBuyCarousel = memo(function QuickBuyCarousel() {
+  const theme = usePhaseTheme();
   const owned = useGameStore((s) => s.owned);
   const boughtUpgrades = useGameStore((s) => s.boughtUpgrades);
   const boughtClickUpgrades = useGameStore((s) => s.boughtClickUpgrades);
@@ -63,7 +65,7 @@ export const QuickBuyCarousel = memo(function QuickBuyCarousel() {
       setEssenceSnap(useGameStore.getState().essence);
     };
     tick();
-    const id = setInterval(tick, 300);
+    const id = setInterval(tick, 250);
     const unsub = useGameStore.subscribe(tick);
     return () => {
       active = false;
@@ -83,9 +85,12 @@ export const QuickBuyCarousel = memo(function QuickBuyCarousel() {
         label: gen.displayName,
         cost,
         iconId: gen.id,
-        category: 'generator',
+        iconKind: 'instrument',
+        ringColor: theme.essence,
         affordable: essenceSnap >= cost,
-        onBuy: () => buyGenerator(gen.id),
+        onBuy: () => {
+          if (buyGenerator(gen.id)) playSfx('comprarInstrumento');
+        },
       });
     }
 
@@ -97,10 +102,13 @@ export const QuickBuyCarousel = memo(function QuickBuyCarousel() {
         key: `up-${up.id}`,
         label: up.displayName,
         cost,
-        iconId: up.generatorId,
-        category: 'generator',
+        iconId: up.id,
+        iconKind: 'transmutation',
+        ringColor: BASE.gold,
         affordable: essenceSnap >= cost,
-        onBuy: () => buyUpgrade(up.id),
+        onBuy: () => {
+          if (buyUpgrade(up.id)) playSfx('comprarUpgrade');
+        },
       });
     }
 
@@ -111,7 +119,8 @@ export const QuickBuyCarousel = memo(function QuickBuyCarousel() {
         label: cu.displayName,
         cost: cu.cost,
         iconId: cu.id,
-        category: 'click',
+        iconKind: 'click',
+        ringColor: BASE.arcane,
         affordable: essenceSnap >= cu.cost,
         onBuy: () => buyClickUpgrade(cu.id),
       });
@@ -130,6 +139,7 @@ export const QuickBuyCarousel = memo(function QuickBuyCarousel() {
     buyUpgrade,
     essenceSnap,
     owned,
+    theme.essence,
   ]);
 
   if (items.length === 0) return null;

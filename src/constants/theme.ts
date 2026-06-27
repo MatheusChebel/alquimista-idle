@@ -14,6 +14,7 @@ export const BASE = {
   textFaint: '#5C5179',
   gold: '#F5C542',
   goldInk: '#3A2A06',
+  arcane: '#B98CFF',
   danger: '#C2606A',
   eclipse: '#8B2F4A',
   shadowGlow: 'rgba(0,0,0,0.55)',

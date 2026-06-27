@@ -16,7 +16,6 @@ import {
   getPhaseForQuintessence,
   type Phase,
 } from '@/constants/theme';
-import { playWhoosh } from '@/game/lib/audio/audioEngine';
 import { gameText } from '@/game/lib/typography';
 import { useReducedMotion } from '@/game/hooks/useReducedMotion';
 import { usePhaseTheme } from '@/game/hooks/usePhaseTheme';
@@ -42,7 +41,6 @@ export function PhaseTransitionOverlay() {
 
     setShownPhase(phase);
     setVisible(true);
-    playWhoosh();
 
     if (reducedMotion) {
       const timer = setTimeout(() => setVisible(false), 400);
